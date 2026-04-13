@@ -26,3 +26,12 @@ class LogisticRegression:
 		for i in range((self.w).shape[0]):
 			if i != 0:
 				print(f' {round(self.w[i],4)} x {lista_noms[i-1]}')
+
+	def predecir(self, X_val):
+		X_val_bias = np.column_stack((np.ones(X_val.shape[0]), X_val))
+		z = X_val_bias @ self.w
+		return 1 / (1 + np.exp(-z))
+	
+	def predecir_clase(self, prediccion, umbral):
+		
+		return (prediccion >= umbral).astype(int)
