@@ -22,7 +22,7 @@ class LogisticRegression:
 	
 	def coefs_con_features(self):
 		lista_noms = self.nombres_features.tolist()
-		print(round(self.w[0],4))
+		print(f'{round(self.w[0],4)} (bias)')
 		for i in range((self.w).shape[0]):
 			if i != 0:
 				print(f' {round(self.w[i],4)} x {lista_noms[i-1]}')
