@@ -15,6 +15,10 @@ def reemplazo_NaNs(train,test,feature,columnas):
 	'''
 	medias_globales = {}
 	for f in columnas:
+		train[f] = train[f].astype(float)
+		test[f] = test[f].astype(float)
+	
+	for f in columnas:
 		medias_por_cada_variable = train[f].mean()
 		medias_globales[f] = medias_por_cada_variable
 

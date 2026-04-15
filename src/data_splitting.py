@@ -48,9 +48,11 @@ def temporal_split(dev,m):
 
 	return train, test
 
-def cross_val(dev, nombres_features, y_col, K, L2, alfa, iters, umbral, group_key, columnas_continuas, tipo,clase_positiva):
+def cross_val(dev, nombres_features, y_col, K, L2, alfa, iters, umbral, group_key, columnas_continuas, tipo,clase_positiva, obtener_ws):
 	n = len(dev)  
 	
+	ws = []
+
 	if tipo == 'aleatorio':
 		indices = np.arange(n)
 		np.random.shuffle(indices)
@@ -89,5 +91,12 @@ def cross_val(dev, nombres_features, y_col, K, L2, alfa, iters, umbral, group_ke
 		F1_i = F1_score(y_pred_clase, y_val_fold, clase_positiva)
 
 		F1s.append(F1_i)
+		ws.append(modelo_train.w)
 
-	return np.mean(F1s)  
+	F1s = [f for f in F1s if not np.isnan(f)] #para que promedie sobre los validos
+
+	if obtener_ws == True:
+		return np.mean(F1s),ws
+	
+	else: 
+		return np.mean(F1s)  

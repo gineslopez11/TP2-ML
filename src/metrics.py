@@ -17,22 +17,28 @@ def accuracy(y_pred, y_real, clase_positiva=1):
     return (TP + TN) / (TP + TN + FP + FN)
 
 def precision(y_pred, y_real, clase_positiva=1):
-    TP = ((y_pred == clase_positiva) & (y_real == clase_positiva)).sum()
-    FP = ((y_pred == clase_positiva) & (y_real == (1-clase_positiva))).sum()
+	TP = ((y_pred == clase_positiva) & (y_real == clase_positiva)).sum()
+	FP = ((y_pred == clase_positiva) & (y_real == (1-clase_positiva))).sum()
     
-    return TP / (TP + FP)
+	if (TP + FP) == 0:
+		return np.nan
+
+	return TP / (TP + FP)
 
 def recall(y_pred, y_real, clase_positiva=1):
-    TP = ((y_pred == clase_positiva) & (y_real == clase_positiva)).sum()
-    FN = ((y_pred == (1-clase_positiva)) & (y_real == clase_positiva)).sum()
-    
-    return TP / (TP + FN)
+	TP = ((y_pred == clase_positiva) & (y_real == clase_positiva)).sum()
+	FN = ((y_pred == (1-clase_positiva)) & (y_real == clase_positiva)).sum()
+
+	if (TP + FN) == 0:
+		return np.nan
+
+	return TP / (TP + FN)
 
 def F1_score(y_pred, y_real, clase_positiva=1):
-    p = precision(y_pred, y_real, clase_positiva)
-    r = recall(y_pred, y_real, clase_positiva)
+	p = precision(y_pred, y_real, clase_positiva)
+	r = recall(y_pred, y_real, clase_positiva)
     
-    return 2 * (p * r) / (p + r)
+	return 2 * (p * r) / (p + r)
 
 def curva_ROC(y_pred_prob, y_real, clase_positiva=1):
     umbrales = np.sort(np.unique(y_pred_prob))[::-1]
