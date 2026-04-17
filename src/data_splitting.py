@@ -48,55 +48,59 @@ def temporal_split(dev,m):
 
 	return train, test
 
-def cross_val(dev, nombres_features, y_col, K, L2, alfa, iters, umbral, group_key, columnas_continuas, tipo,clase_positiva, obtener_ws):
-	n = len(dev)  
-	
-	ws = []
+def cross_val(dev, nombres_features, y_col, K, L2, alfa, iters, umbral, group_key, columnas_continuas, tipo, clase_positiva, obtener_ws, modelo_clase):
+    n = len(dev)  
+    ws = []
+    y_preds_all = []
+    y_reals_all = []
 
-	if tipo == 'aleatorio':
-		indices = np.arange(n)
-		np.random.shuffle(indices)
-		folds = np.array_split(indices, K)
+    if tipo == 'aleatorio':
+        indices = np.arange(n)
+        np.random.shuffle(indices)
+        folds = np.array_split(indices, K)
+    elif tipo == 'group':
+        grupos = dev[group_key].unique()
+        folds = [np.where(dev[group_key] == g)[0] for g in grupos]
+    elif tipo == 'temporal':
+        semestres = sorted(dev['semestre'].unique(), key=lambda x: (x.split('-')[0], x.split('-')[1]))
+        folds = [np.where(dev['semestre'] == s)[0] for s in semestres]
 
-	elif tipo == 'group':
-		grupos = dev[group_key].unique()
-		folds = [np.where(dev[group_key] == g)[0] for g in grupos]
+    F1s = []
 
-	elif tipo == 'temporal':
-		semestres = sorted(dev['semestre'].unique(), key=lambda x: (x.split('-')[0], x.split('-')[1]))
-		folds = [np.where(dev['semestre'] == s)[0] for s in semestres]
+    for i in range(len(folds)):
+        val_idx = folds[i]
+        train_idx = np.concatenate([folds[j] for j in range(len(folds)) if j != i])
 
-	F1s = []
+        train_fold = dev.iloc[train_idx].copy()
+        val_fold = dev.iloc[val_idx].copy()
 
-	for i in range(len(folds)):
-		val_idx = folds[i]
-		train_idx = np.concatenate([folds[j] for j in range(len(folds)) if j != i])
+        reemplazo_NaNs(train_fold, val_fold, group_key, columnas_continuas)
+        train_fold_norm, val_fold_norm, _ = normalizar(train_fold, val_fold, columnas_continuas)
 
-		train_fold = dev.iloc[train_idx].copy()
-		val_fold = dev.iloc[val_idx].copy()
+        X_train_fold = train_fold_norm[nombres_features].values
+        y_train_fold = train_fold_norm[y_col].values
+        X_val_fold = val_fold_norm[nombres_features].values
+        y_val_fold = val_fold_norm[y_col].values
+        
+        modelo_train = modelo_clase(X_train_fold, y_train_fold, nombres_features, L2, alfa, iters)
+        modelo_train.fit()
+        y_pred_clase = modelo_train.predecir_clase(X_val_fold, umbral)
 
-		reemplazo_NaNs(train_fold, val_fold, group_key, columnas_continuas)
-		train_fold_norm, val_fold_norm, _ = normalizar(train_fold, val_fold, columnas_continuas)
+        F1_i = F1_score(y_pred_clase, y_val_fold, clase_positiva)
+        F1s.append(F1_i)
+        
+        y_preds_all.append(y_pred_clase)
+        y_reals_all.append(y_val_fold)
+        
+        if hasattr(modelo_train, 'w'):
+            ws.append(modelo_train.w)
 
-		X_train_fold = train_fold_norm[nombres_features].values
-		y_train_fold = train_fold_norm[y_col].values
-		X_val_fold = val_fold_norm[nombres_features].values
-		y_val_fold = val_fold_norm[y_col].values
+    F1s = [f for f in F1s if not np.isnan(f)]
+    
+    y_preds_all = np.concatenate(y_preds_all)
+    y_reals_all = np.concatenate(y_reals_all)
 
-		modelo_train = LogisticRegression(X_train_fold, y_train_fold, nombres_features, L2)
-		modelo_train.entrenar_gradiente_descendiente(alfa, iters)
-
-		y_pred_prob = modelo_train.predecir(X_val_fold)
-		y_pred_clase = modelo_train.predecir_clase(y_pred_prob, umbral)
-		F1_i = F1_score(y_pred_clase, y_val_fold, clase_positiva)
-
-		F1s.append(F1_i)
-		ws.append(modelo_train.w)
-
-	F1s = [f for f in F1s if not np.isnan(f)] #para que promedie sobre los validos
-
-	if obtener_ws == True:
-		return np.mean(F1s),ws
-	
-	else: 
-		return np.mean(F1s)  
+    if obtener_ws:
+        return np.mean(F1s), ws, y_preds_all, y_reals_all
+    else:
+        return np.mean(F1s), y_preds_all, y_reals_all

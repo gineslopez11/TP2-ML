@@ -2,48 +2,43 @@ import numpy as np
 
 def matriz_confusion(y_pred, y_real, clase_positiva=1):
     TP = ((y_pred == clase_positiva) & (y_real == clase_positiva)).sum()
-    TN = ((y_pred == (1-clase_positiva)) & (y_real == (1-clase_positiva))).sum()
-    FP = ((y_pred == clase_positiva) & (y_real == (1-clase_positiva))).sum()
-    FN = ((y_pred == (1-clase_positiva)) & (y_real == clase_positiva)).sum()
-    
+    TN = ((y_pred != clase_positiva) & (y_real != clase_positiva)).sum()
+    FP = ((y_pred == clase_positiva) & (y_real != clase_positiva)).sum()
+    FN = ((y_pred != clase_positiva) & (y_real == clase_positiva)).sum()
     return np.array([[TN, FP], [FN, TP]])
 
 def accuracy(y_pred, y_real, clase_positiva=1):
     TP = ((y_pred == clase_positiva) & (y_real == clase_positiva)).sum()
-    TN = ((y_pred == (1-clase_positiva)) & (y_real == (1-clase_positiva))).sum()
-    FP = ((y_pred == clase_positiva) & (y_real == (1-clase_positiva))).sum()
-    FN = ((y_pred == (1-clase_positiva)) & (y_real == clase_positiva)).sum()
-    
+    TN = ((y_pred != clase_positiva) & (y_real != clase_positiva)).sum()
+    FP = ((y_pred == clase_positiva) & (y_real != clase_positiva)).sum()
+    FN = ((y_pred != clase_positiva) & (y_real == clase_positiva)).sum()
     return (TP + TN) / (TP + TN + FP + FN)
 
 def precision(y_pred, y_real, clase_positiva=1):
-	TP = ((y_pred == clase_positiva) & (y_real == clase_positiva)).sum()
-	FP = ((y_pred == clase_positiva) & (y_real == (1-clase_positiva))).sum()
-    
-	if (TP + FP) == 0:
-		return np.nan
-
-	return TP / (TP + FP)
+    TP = ((y_pred == clase_positiva) & (y_real == clase_positiva)).sum()
+    FP = ((y_pred == clase_positiva) & (y_real != clase_positiva)).sum()
+    if (TP + FP) == 0:
+        return np.nan
+    return TP / (TP + FP)
 
 def recall(y_pred, y_real, clase_positiva=1):
-	TP = ((y_pred == clase_positiva) & (y_real == clase_positiva)).sum()
-	FN = ((y_pred == (1-clase_positiva)) & (y_real == clase_positiva)).sum()
-
-	if (TP + FN) == 0:
-		return np.nan
-
-	return TP / (TP + FN)
+    TP = ((y_pred == clase_positiva) & (y_real == clase_positiva)).sum()
+    FN = ((y_pred != clase_positiva) & (y_real == clase_positiva)).sum()
+    if (TP + FN) == 0:
+        return np.nan
+    return TP / (TP + FN)
 
 def F1_score(y_pred, y_real, clase_positiva=1):
-	p = precision(y_pred, y_real, clase_positiva)
-	r = recall(y_pred, y_real, clase_positiva)
-    
-	return 2 * (p * r) / (p + r)
+    p = precision(y_pred, y_real, clase_positiva)
+    r = recall(y_pred, y_real, clase_positiva)
+    if np.isnan(p) or np.isnan(r) or (p + r) == 0:
+        return np.nan
+    return 2 * (p * r) / (p + r)
 
 def curva_ROC(y_pred_prob, y_real, clase_positiva=1):
     umbrales = np.sort(np.unique(y_pred_prob))[::-1]
-    tpr_list = []  # recall
-    fpr_list = []  # tasa de FP
+    tpr_list = []
+    fpr_list = []
     
     for umbral in umbrales:
         y_pred = (y_pred_prob >= umbral).astype(int)
@@ -67,7 +62,7 @@ def curva_ROC(y_pred_prob, y_real, clase_positiva=1):
     return np.array(fpr_list), np.array(tpr_list), umbrales
 
 def AUC_ROC(fpr, tpr):
-    orden = np.argsort(fpr) #se necesitan valores en orden creciente sino da negativo el auc lo cual es imposible
+    orden = np.argsort(fpr)
     return np.trapz(tpr[orden], fpr[orden])
 
 def curva_PR(y_pred_prob, y_real, clase_positiva=1):
@@ -98,3 +93,14 @@ def curva_PR(y_pred_prob, y_real, clase_positiva=1):
 def AUC_PR(recall, precision):
     orden = np.argsort(recall)
     return np.trapz(precision[orden], recall[orden])
+
+def matriz_confusion_multiclase(y_pred, y_real):
+    clases = np.unique(np.concatenate([y_pred, y_real]))
+    n = len(clases)
+    mc = np.zeros((n, n), dtype=int)
+    
+    for i, real in enumerate(clases):
+        for j, pred in enumerate(clases):
+            mc[i, j] = ((y_real == real) & (y_pred == pred)).sum()
+    
+    return mc
