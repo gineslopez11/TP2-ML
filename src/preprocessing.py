@@ -62,4 +62,86 @@ def desnormalizar (nombre_col, DataF_col_values,media_std):
 
 	return valores_normalizados
 
+def undersampling(X, y):
+	clase_0_idx = np.where(y == 0)[0]
+	clase_1_idx = np.where(y == 1)[0]
+	
+	if len(clase_0_idx) < len(clase_1_idx):
+		minoritaria_idx = clase_0_idx
+		mayoritaria_idx = clase_1_idx
+	else:
+		minoritaria_idx = clase_1_idx
+		mayoritaria_idx = clase_0_idx
+
+	mayoritaria_sample = np.random.choice(mayoritaria_idx, len(minoritaria_idx), replace=False)
+	
+	indices = np.concatenate([minoritaria_idx, mayoritaria_sample])
+	np.random.shuffle(indices)
+	
+	return X[indices], y[indices]
+
+def oversampling(X, y):
+	clase_0_idx = np.where(y == 0)[0]
+	clase_1_idx = np.where(y == 1)[0]
+	
+	if len(clase_0_idx) < len(clase_1_idx):
+		minoritaria_idx = clase_0_idx
+		n_mayoritaria = len(clase_1_idx)
+	else:
+		minoritaria_idx = clase_1_idx
+		n_mayoritaria = len(clase_0_idx)
+	
+	duplicados_idx = np.random.choice(minoritaria_idx, n_mayoritaria, replace=True)
+	
+	indices = np.concatenate([np.arange(len(y)), duplicados_idx])
+	np.random.shuffle(indices)
+	
+	return X[indices], y[indices]
+
+def smote(X, y, k=5):
+	'''
+	crea muestras sinteticas de la clase minoritaria. Para cada ejemplo minoritario, busca sus K vecinos mas cercanos 
+	y crea un nuevo ejemplo en un punto random entre el ejemplo y uno de sus vecinos. De esta manera
+	genera datos nuevos (no duplicados) que ayudan al modelo a aprender mejor la clase minoritaria
+	'''
+	
+	clase_0_idx = np.where(y == 0)[0]
+	clase_1_idx = np.where(y == 1)[0]
+	
+	if len(clase_0_idx) < len(clase_1_idx):
+		minoritaria_idx = clase_0_idx
+		n_sinteticos = len(clase_1_idx) - len(clase_0_idx)
+	else:
+		minoritaria_idx = clase_1_idx
+		n_sinteticos = len(clase_0_idx) - len(clase_1_idx)
+	
+	X_min = X[minoritaria_idx]
+	sinteticos = []
+	
+	for _ in range(n_sinteticos):
+		#elegir ejemplo aleatorio de la clase minoritaria
+		idx = np.random.randint(len(X_min))
+		ejemplo = X_min[idx]
+		
+		#calcula distancias euclidianas a todos los otros ejemplos minoritarios
+		distancias = np.sqrt(((X_min - ejemplo) ** 2).sum(axis=1))
+		distancias[idx] = np.inf  # ignorar el mismo ejemplo
+		
+		#elige uno de los k vecinos mas cercanos (random)
+		vecinos_idx = np.argsort(distancias)[:k]
+		vecino = X_min[np.random.choice(vecinos_idx)]
+		
+		#crear ejemplo sintetico en un punto random entre ejemplo y vecino
+		alpha = np.random.random()
+		nuevo = ejemplo + alpha * (vecino - ejemplo)
+		sinteticos.append(nuevo)
+	
+	X_sinteticos = np.array(sinteticos)
+	y_sinteticos = np.full(n_sinteticos, y[minoritaria_idx[0]])
+	
+	X_balanceado = np.vstack([X, X_sinteticos])
+	y_balanceado = np.concatenate([y, y_sinteticos])
+	
+	indices = np.random.permutation(len(y_balanceado))
+	return X_balanceado[indices], y_balanceado[indices]
 	

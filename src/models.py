@@ -2,13 +2,14 @@ import numpy as np
 import pandas as pd
 
 class LogisticRegression:
-	def __init__(self, X, y, nombres_features, L2=0, alpha=0.01, iters=1000):
+	def __init__(self, X, y, nombres_features, L2=0, alpha=0.01, iters=1000, class_weight=None):
 		self.X = np.column_stack((np.ones(X.shape[0]), X))
 		self.y = y
 		self.nombres_features = nombres_features
 		self.L2 = L2
 		self.alpha = alpha
 		self.iters = iters
+		self.class_weight = class_weight
 	
 	def entrenar_gradiente_descendiente(self):
 		self.w = np.zeros((self.X).shape[1])
@@ -17,7 +18,12 @@ class LogisticRegression:
 		for _ in range (self.iters):
 			z = self.X @ self.w
 			y_pred = 1 / (1 + np.exp(-z))
-			grad = (1/n)*self.X.T@(y_pred - self.y) + self.L2*self.w
+			error = y_pred - self.y
+			if self.class_weight is not None:
+				pesos = np.where(self.y == 0, self.class_weight[0], self.class_weight[1])
+				error = error * pesos
+			grad = (1/n)*self.X.T @ error + self.L2*self.w
+
 			self.w = self.w - self.alpha*grad 
 		
 		return self.w
@@ -32,13 +38,13 @@ class LogisticRegression:
 			if i != 0:
 				print(f' {round(self.w[i],4)} x {lista_noms[i-1]}')
 
-	def predecir(self, X_val):
+	def predecir_proba(self, X_val):
 		X_val_bias = np.column_stack((np.ones(X_val.shape[0]), X_val))
 		z = X_val_bias @ self.w
 		return 1 / (1 + np.exp(-z))
 	
 	def predecir_clase(self, X, umbral=0.5):
-		prediccion = self.predecir(X)
+		prediccion = self.predecir_proba(X)
 		return (prediccion >= umbral).astype(int)
 
 class LDA:
